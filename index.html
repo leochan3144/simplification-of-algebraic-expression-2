@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simplify It! Algebra step game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFDFF; --grid:#DFEAF6; --ink:#1B2A6B; --ink-soft:#56639A; --line:#C3D0EA;
+  --hi:#FFE45C; --hi-ink:#1B2A6B; --red:#D23232; --green:#14905A; --margin:#F2A0A0;
+  --key:#FFFFFF; --key-edge:#BCC8E6; --panel:#EEF3FB; --gold:#E3A400; --gold-deep:#B07A00;
+  --h0:#FFE45C; --h1:#FFA8D5; --h2:#A6EBA6; --h3:#A9D8FF; --h4:#FFC985; --h5:#D2BEFF; --h-ink:#14204F;
+  --ui:'Bricolage Grotesque', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --math:'STIX Two Text', 'Cambria Math', Cambria, 'Times New Roman', serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1730; --grid:#1A2647; --ink:#E4EAFF; --ink-soft:#A3AFD8; --line:#2C3A6A;
+    --hi:#E9CF3A; --hi-ink:#14204F; --red:#FF7070; --green:#3DD598; --margin:#7A3A4A;
+    --key:#18224A; --key-edge:#2E3C70; --panel:#141E3D; --gold:#FFC93C; --gold-deep:#C99412;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1730; --grid:#1A2647; --ink:#E4EAFF; --ink-soft:#A3AFD8; --line:#2C3A6A;
+  --hi:#E9CF3A; --hi-ink:#14204F; --red:#FF7070; --green:#3DD598; --margin:#7A3A4A;
+  --key:#18224A; --key-edge:#2E3C70; --panel:#141E3D; --gold:#FFC93C; --gold-deep:#C99412;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;min-height:100%;color:var(--ink);font-family:var(--ui);font-size:17px;line-height:1.5;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.m{font-family:var(--math)}
+.m i{font-style:italic;padding:0 .02em}
+sup{font-size:.62em;line-height:0}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
+[hidden]{display:none!important}
+
+/* highlighter colours for like terms */
+.hlt{border-radius:5px;padding:0 .14em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.hl0,.hl1,.hl2,.hl3,.hl4,.hl5{color:var(--h-ink)}
+.hl0{background:var(--h0)} .hl1{background:var(--h1)} .hl2{background:var(--h2)}
+.hl3{background:var(--h3)} .hl4{background:var(--h4)} .hl5{background:var(--h5)}
+
+/* header */
+header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:6px 0 14px;border-bottom:2px solid var(--ink);margin-bottom:20px}
+.brand{font-weight:800;font-size:1.35rem;letter-spacing:-.02em;margin:0;white-space:nowrap}
+.brand span{font-family:var(--math);font-style:italic;font-weight:600}
+.progress{display:flex;gap:6px;list-style:none;margin:0;padding:0;flex:1;min-width:0;flex-wrap:wrap}
+.progress li{width:30px;height:30px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-weight:600;font-size:.85rem;background:var(--paper)}
+.progress li.now{background:var(--hi);color:var(--hi-ink);border-color:var(--hi-ink)}
+.progress li.done{background:var(--ink);color:var(--paper)}
+.score{position:relative;display:flex;align-items:baseline;gap:8px;padding:4px 14px;border:2px solid var(--ink);border-radius:10px;background:var(--paper)}
+.score small{font-size:.8rem;color:var(--ink-soft)}
+.score b{font-size:1.5rem;font-variant-numeric:tabular-nums;min-width:2.5ch;text-align:right}
+.score b.neg{color:var(--red)}
+.float{position:absolute;right:10px;top:-6px;font-weight:800;font-size:1.1rem;pointer-events:none;animation:floatUp 1s ease-out forwards}
+.float.up{color:var(--green)} .float.down{color:var(--red)}
+@keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-34px)}}
+.linkbtn{background:none;border:none;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:var(--ink-soft);padding:4px}
+
+/* start screen */
+.start{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:30px 0}
+.hero-work{font-family:var(--math);font-size:clamp(1.9rem,5vw,3.4rem);line-height:1.35;margin:0 0 10px;display:grid;grid-template-columns:auto 1fr;column-gap:.35em}
+.hero-work .eqs{color:var(--ink-soft)}
+.start h1{font-size:clamp(1.6rem,3.4vw,2.3rem);letter-spacing:-.02em;line-height:1.1;margin:22px 0 10px}
+.start p.lead{max-width:46ch;color:var(--ink-soft);margin:0 0 22px}
+.rules{background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:22px 24px}
+.rules h2{margin:0 0 10px;font-size:1.15rem}
+.rules ul{margin:0;padding-left:1.1em}
+.rules li{margin:6px 0}
+.rules .pts-up{color:var(--green);font-weight:800}
+.rules .pts-down{color:var(--red);font-weight:800}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{border:2px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:800;font-size:1.05rem;padding:12px 22px;border-radius:12px;cursor:pointer;box-shadow:0 4px 0 var(--ink-soft);transition:transform .06s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink-soft)}
+.btn.ghost{background:var(--paper);color:var(--ink)}
+
+/* play */
+.play{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(320px,.7fr);gap:28px;align-items:start}
+.sheet{position:relative;background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:22px 24px 26px 86px;min-height:380px}
+.sheet::before{content:"";position:absolute;left:72px;top:0;bottom:0;width:2px;background:var(--margin)}
+.qmeta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.qmeta h2{margin:0;font-size:1.3rem;letter-spacing:-.01em}
+.src{font-size:.9rem;color:var(--ink-soft)}
+.src.follow{color:var(--red);font-weight:600}
+.tip{color:var(--ink-soft);margin:4px 0 14px;font-size:.95rem}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px dashed var(--line);margin-bottom:6px}
+.toolbar .say{font-weight:600}
+.hlbtn{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ink);background:var(--paper);border-radius:999px;padding:6px 14px 6px 10px;font-weight:600;font-size:.95rem;cursor:pointer}
+.hlbtn svg{width:22px;height:22px}
+.hlbtn[aria-pressed="true"]{background:var(--h0);color:var(--h-ink);border-color:var(--h-ink)}
+.work{margin:0;padding:0}
+.row{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.4em;row-gap:2px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.row .mg{position:absolute;left:-80px;top:12px;width:62px;text-align:right;font-size:.78rem;white-space:nowrap;font-weight:800;color:var(--ink-soft);line-height:1.2}
+.row.done .mg{color:var(--green)}
+.row.cur .mg span{display:inline-block;text-align:center;background:var(--hi);color:var(--hi-ink);padding:2px 7px;border-radius:6px}
+.row .eqs{font-family:var(--math);font-size:1.7rem;width:1.1em;flex:none;color:var(--ink-soft)}
+.row .ex{font-family:var(--math);font-size:1.7rem;line-height:1.5}
+.row.qrow .ex{font-size:2rem}
+.row .note{margin-left:auto;font-size:.88rem;color:var(--ink-soft);text-align:right;align-self:center}
+.row.cur .note{color:var(--ink);font-weight:600}
+.row.future{opacity:.5}
+.row.future .ex{font-family:var(--ui);font-size:1rem;letter-spacing:.2em}
+.typing{min-width:4ch;display:inline-block;border-bottom:2px solid var(--ink);padding:0 4px;background:var(--panel)}
+.caret{display:inline-block;width:2px;height:1.05em;background:var(--ink);vertical-align:-.12em;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+svg.mark{width:28px;height:28px;flex:none;align-self:center}
+svg.mark path{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;animation:draw .35s ease-out}
+svg.tick path{stroke:var(--green)}
+@keyframes draw{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}
+.wrongs{flex-basis:100%;padding-left:1.5em;font-size:.88rem;color:var(--red)}
+.revealed{color:var(--ink-soft)}
+
+/* pad */
+.side{position:sticky;top:calc(12px + env(safe-area-inset-top,0px))}
+.screen{background:var(--panel);border:2px solid var(--ink);border-radius:14px;padding:10px 14px;margin-bottom:10px}
+.screen .label{font-size:.82rem;color:var(--ink-soft)}
+.screen .val{font-family:var(--math);font-size:1.7rem;min-height:2.4rem;overflow-x:auto;white-space:nowrap}
+.screen .val .eqs{color:var(--ink-soft);margin-right:.3em}
+.screen.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.feedback{min-height:1.5rem;margin:0 0 8px;font-weight:600}
+.feedback.ok{color:var(--green)} .feedback.bad{color:var(--red)} .feedback.note{color:var(--ink-soft)}
+.hint{background:var(--hi);color:var(--hi-ink);border-radius:10px;padding:10px 12px 10px 14px;margin:0 0 10px;font-size:.95rem;border-left:5px solid var(--hi-ink)}
+.hint b{display:block;font-size:.85rem}
+.hint .reveal{display:block;margin-top:6px;font-family:var(--math);font-size:1.3rem}
+.letters{display:flex;gap:7px;margin-bottom:7px}
+.letters .key{flex:1}
+.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.key{height:54px;border:2px solid var(--key-edge);background:var(--key);border-radius:12px;font-size:1.3rem;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--key-edge);transition:transform .05s;touch-action:manipulation;user-select:none;-webkit-user-select:none;padding:0}
+.key:active,.key.pressed{transform:translateY(2px);box-shadow:0 1px 0 var(--key-edge)}
+.key.var{font-family:var(--math);font-style:italic;font-size:1.55rem}
+.key.op{font-family:var(--math);font-size:1.55rem}
+.key.fn{font-size:.95rem;color:var(--ink-soft)}
+.key.go{background:var(--ink);color:var(--paper);border-color:var(--ink);box-shadow:0 3px 0 var(--ink-soft);font-size:1rem;font-weight:800}
+.key sup{font-size:.6em}
+.typehelp{font-size:.82rem;color:var(--ink-soft);margin-top:10px}
+.result{border:2px solid var(--ink);border-radius:14px;padding:18px;background:var(--paper)}
+.result h3{margin:0 0 6px;font-size:1.25rem}
+.result p{margin:0 0 14px;color:var(--ink-soft)}
+.result.clean h3{color:var(--green)}
+.result.again h3{color:var(--red)}
+
+/* bank */
+.bank h1{margin:0 0 4px;font-size:1.8rem;letter-spacing:-.02em}
+.bank .intro{color:var(--ink-soft);margin:0 0 20px;max-width:70ch}
+.btype{background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:16px 20px;margin-bottom:16px}
+.btype h2{margin:0;font-size:1.15rem}
+.btype p{margin:2px 0 10px;color:var(--ink-soft);font-size:.95rem}
+.btype ol{margin:0;padding-left:1.6em}
+.btype li{padding:6px 0;border-bottom:1px dashed var(--line)}
+.btype li:last-child{border-bottom:0}
+.btype .bq{font-family:var(--math);font-size:1.25rem}
+.btype .bw{font-family:var(--math);font-size:1.05rem;color:var(--ink-soft)}
+.btype .tag{font-family:var(--ui);font-size:.75rem;margin-left:8px;padding:1px 7px;border-radius:20px;border:1px solid var(--ink-soft);color:var(--ink-soft);vertical-align:3px}
+.btype .tag.ws{background:var(--hi);color:var(--hi-ink);border-color:var(--hi-ink)}
+
+/* trophy */
+.win{text-align:center;padding:30px 0 10px;position:relative}
+.win h1{font-size:clamp(2rem,5vw,3rem);margin:8px 0 4px;letter-spacing:-.02em}
+.win p{color:var(--ink-soft);margin:0 0 20px}
+.trophy{width:min(250px,60vw);height:auto;animation:rise .9s cubic-bezier(.2,1.4,.4,1)}
+@keyframes rise{from{transform:translateY(40px) scale(.7);opacity:0}to{transform:none;opacity:1}}
+.stats{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{border:2px solid var(--ink);border-radius:12px;padding:10px 18px;background:var(--paper);min-width:120px}
+.stat b{display:block;font-size:1.6rem}
+.stat span{font-size:.85rem;color:var(--ink-soft)}
+.win .cta{justify-content:center}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+.confetti i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+@media (max-width:860px){
+  .start{grid-template-columns:1fr;gap:24px;padding:10px 0}
+  .play{grid-template-columns:1fr;gap:18px}
+  .side{position:static}
+  .sheet{padding:18px 14px 20px 70px;min-height:0}
+  .sheet::before{left:58px}
+  .row .mg{left:-66px;width:52px}
+  .row .note{margin-left:1.5em;flex-basis:100%;text-align:left}
+  .row .eqs,.row .ex{font-size:1.45rem}
+  .row.qrow .ex{font-size:1.7rem}
+}
+@media (max-width:640px){
+  header.top{gap:10px}
+  .brand{flex:1;font-size:1.1rem}
+  #bankLink{order:2;font-size:.85rem;padding:2px}
+  .score{order:3;padding:2px 10px;gap:6px}
+  .score b{font-size:1.25rem}
+  .progress{order:4;flex:0 0 100%;flex-wrap:nowrap}
+  .progress li{flex:1;width:auto}
+}
+@media (max-width:480px){
+  .wrap{padding:12px 10px 30px}
+  .progress li{height:26px;font-size:.78rem}
+  .key{height:50px;font-size:1.15rem}
+  .keys,.letters{gap:6px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}
+  .confetti{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="brand">Simplify <span>it!</span></p>
+    <ol class="progress" id="progress" aria-label="Question types"></ol>
+    <button class="linkbtn" id="bankLink" type="button">Question bank</button>
+    <div class="score" aria-live="polite"><small>Score</small><b id="score">0</b></div>
+  </header>
+
+  <!-- START -->
+  <section id="startView" class="start">
+    <div>
+      <div class="hero-work" aria-label="Example: 2 + x − 3 + 7x = 2 − 3 + x + 7x = −1 + 8x">
+        <span class="eqs"></span><span><span class="hlt hl0">2</span> <span class="hlt hl1">+&thinsp;<i>x</i></span> <span class="hlt hl0">−&thinsp;3</span> <span class="hlt hl1">+&thinsp;7<i>x</i></span></span>
+        <span class="eqs">=</span><span><span class="hlt hl0">2 − 3</span> <span class="hlt hl1">+&thinsp;<i>x</i> + 7<i>x</i></span></span>
+        <span class="eqs">=</span><span>−1 + 8<i>x</i></span>
+      </div>
+      <h1>Simplify algebraic expressions, one line at a time.</h1>
+      <p class="lead">Eight question types from your worksheet. Write each line of working after the equals sign, just like in your homework, and earn the trophy.</p>
+      <div class="cta">
+        <button class="btn" id="startBtn" type="button">Start the game</button>
+        <button class="btn ghost" id="bankBtn" type="button">See the question bank</button>
+      </div>
+    </div>
+    <div class="rules">
+      <h2>How it works</h2>
+      <ul>
+        <li>Each step is a new line starting with <b>=</b>. Type the whole line on the number pad.</li>
+        <li>Correct line: <span class="pts-up">+10</span>. A line that changes the value: <span class="pts-down">−10</span> and you get a hint.</li>
+        <li>If your line is equal but isn’t the step asked for (for example you skipped grouping), you get a tip and lose nothing.</li>
+        <li>Press <b>Highlight like terms</b> to colour terms that can be collected together.</li>
+        <li>Make a mistake and you’ll get one more question of the same type. Finish a question with no mistakes to clear the type. Clear all 8 to win the trophy.</li>
+        <li>For powers, type the letter, press <b>x<sup>n</sup></b>, then the number.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="playView" class="play" hidden>
+    <div class="sheet" id="sheet"></div>
+    <aside class="side">
+      <div id="padArea">
+        <div class="screen" id="screen"><div class="label" id="screenLabel">Your line</div><div class="val" id="screenVal"></div></div>
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+        <div class="hint" id="hint" hidden></div>
+        <div class="letters" id="letters"></div>
+        <div class="keys" id="keys">
+          <button class="key" data-k="7" type="button">7</button>
+          <button class="key" data-k="8" type="button">8</button>
+          <button class="key" data-k="9" type="button">9</button>
+          <button class="key op" data-k="(" type="button" aria-label="open bracket">(</button>
+          <button class="key op" data-k=")" type="button" aria-label="close bracket">)</button>
+          <button class="key" data-k="4" type="button">4</button>
+          <button class="key" data-k="5" type="button">5</button>
+          <button class="key" data-k="6" type="button">6</button>
+          <button class="key op" data-k="*" type="button" aria-label="times">×</button>
+          <button class="key op" data-k="/" type="button" aria-label="divide">÷</button>
+          <button class="key" data-k="1" type="button">1</button>
+          <button class="key" data-k="2" type="button">2</button>
+          <button class="key" data-k="3" type="button">3</button>
+          <button class="key op" data-k="+" type="button" aria-label="plus">+</button>
+          <button class="key op" data-k="-" type="button" aria-label="minus">−</button>
+          <button class="key" data-k="0" type="button">0</button>
+          <button class="key fn" data-k="^" type="button" aria-label="power">x<sup>n</sup></button>
+          <button class="key fn" data-k="back" type="button" aria-label="Delete">⌫</button>
+          <button class="key fn" data-k="clear" type="button">Clear</button>
+          <button class="key go" data-k="enter" type="button">Check</button>
+        </div>
+        <p class="typehelp">Keyboard works too: digits, letters, + − * / ( ), ^ for powers, Enter to check.</p>
+      </div>
+      <div id="resultArea" hidden></div>
+    </aside>
+  </section>
+
+  <!-- BANK -->
+  <section id="bankView" class="bank" hidden>
+    <button class="linkbtn" id="bankBack" type="button">← Back</button>
+    <h1>Question bank</h1>
+    <p class="intro" id="bankIntro"></p>
+    <div id="bankList"></div>
+  </section>
+
+  <!-- WIN -->
+  <section id="winView" class="win" hidden>
+    <svg class="trophy" viewBox="0 0 200 220" role="img" aria-label="Gold trophy">
+      <path d="M52 30 H20 c0 40 14 62 44 66" fill="none" stroke="var(--gold-deep)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M148 30 H180 c0 40 -14 62 -44 66" fill="none" stroke="var(--gold-deep)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M48 18 H152 V60 c0 36 -22 62 -52 62 s-52 -26 -52 -62 Z" fill="var(--gold)" stroke="var(--gold-deep)" stroke-width="5"/>
+      <path d="M70 34 c-2 22 4 44 18 58" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="7" stroke-linecap="round"/>
+      <rect x="88" y="120" width="24" height="34" fill="var(--gold-deep)"/>
+      <rect x="62" y="152" width="76" height="16" rx="4" fill="var(--gold)" stroke="var(--gold-deep)" stroke-width="4"/>
+      <rect x="50" y="168" width="100" height="36" rx="6" fill="var(--ink)"/>
+      <text x="100" y="192" text-anchor="middle" font-family="STIX Two Text, serif" font-style="italic" font-size="17" fill="var(--paper)">x + x = 2x</text>
+      <text x="100" y="78" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="30" fill="var(--gold-deep)">8/8</text>
+    </svg>
+    <h1>All question types cleared!</h1>
+    <p>You’ve mastered every type in the question bank.</p>
+    <div class="stats" id="stats"></div>
+    <div class="cta">
+      <button class="btn" id="againBtn" type="button">Play again</button>
+      <button class="btn ghost" id="winBank" type="button">See the question bank</button>
+    </div>
+  </section>
+</div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script>
+/*ENGINE-START*/
+/* ---------- Algebra engine: polynomials as Map(key -> {c, m}) ---------- */
+const mkey = m => Object.keys(m).filter(v=>m[v]).sort().map(v=>v+m[v]).join('');
+const EPS = 1e-9;
+const P = {
+  num(c){ const p=new Map(); if(Math.abs(c)>EPS) p.set('',{c,m:{}}); return p; },
+  vr(v){ return new Map([[v+'1',{c:1,m:{[v]:1}}]]); },
+  add(a,b){
+    const r=new Map(); for(const [k,t] of a) r.set(k,{c:t.c,m:t.m});
+    for(const [k,t] of b){ const c=(r.has(k)?r.get(k).c:0)+t.c; if(Math.abs(c)<EPS) r.delete(k); else r.set(k,{c,m:t.m}); }
+    return r;
+  },
+  neg(a){ const r=new Map(); for(const [k,t] of a) r.set(k,{c:-t.c,m:t.m}); return r; },
+  mul(a,b){
+    let r=new Map();
+    for(const [,x] of a) for(const [,y] of b){ const m={...x.m}; for(const v in y.m) m[v]=(m[v]||0)+y.m[v]; r=P.add(r,new Map([[mkey(m),{c:x.c*y.c,m}]])); }
+    return r;
+  },
+  isConst(a){ for(const k of a.keys()) if(k!=='') return false; return true; },
+  cval(a){ return a.has('')?a.get('').c:0; },
+  div(a,b){
+    if(!P.isConst(b)) throw new Error('Divide by numbers only');
+    const d=P.cval(b); if(Math.abs(d)<EPS) throw new Error('Divide by zero');
+    const r=new Map(); for(const [k,t] of a) r.set(k,{c:t.c/d,m:t.m}); return r;
+  },
+  pow(a,e){
+    if(!P.isConst(e)) throw new Error('Bad power');
+    const n=P.cval(e); if(!Number.isInteger(Math.round(n*1e6)/1e6)||n<0||n>12) throw new Error('Bad power');
+    let r=P.num(1); for(let i=0;i<Math.round(n);i++) r=P.mul(r,a); return r;
+  },
+  eq(a,b){ const d=P.add(a,P.neg(b)); for(const [,t] of d) if(Math.abs(t.c)>1e-7) return false; return true; }
+};
+
+function tokenize(str){
+  const s=String(str).replace(/×/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s+/g,'');
+  const t=[]; let i=0;
+  while(i<s.length){
+    const ch=s[i];
+    if(/\d/.test(ch)){ let j=i; while(j<s.length&&/[\d.]/.test(s[j])) j++; t.push({k:'n',v:parseFloat(s.slice(i,j))}); i=j; }
+    else if(/[a-z]/i.test(ch)){ t.push({k:'v',v:ch.toLowerCase()}); i++; }
+    else if('+-*/^()'.includes(ch)){ t.push({k:ch}); i++; }
+    else throw new Error('Unknown symbol');
+  }
+  return t;
+}
+
+function parse(str){
+  const t=tokenize(str); let i=0;
+  if(!t.length) throw new Error('Empty');
+  const peek=()=>t[i];
+  function expr(){ let v=term(); while(peek()&&(peek().k==='+'||peek().k==='-')){ const op=t[i++].k; const r=term(); v=op==='+'?P.add(v,r):P.add(v,P.neg(r)); } return v; }
+  function term(){
+    let v=unary();
+    for(;;){ const p=peek(); if(!p) break;
+      if(p.k==='*'){ i++; v=P.mul(v,unary()); }
+      else if(p.k==='/'){ i++; v=P.div(v,unary()); }
+      else if(p.k==='v'||p.k==='('||p.k==='n'){ v=P.mul(v,power()); }
+      else break; }
+    return v;
+  }
+  function unary(){ const p=peek(); if(p&&p.k==='-'){ i++; return P.neg(unary()); } if(p&&p.k==='+'){ i++; return unary(); } return power(); }
+  function power(){ let b=primary(); if(peek()&&peek().k==='^'){ i++; b=P.pow(b,unary()); } return b; }
+  function primary(){
+    const p=t[i++]; if(!p) throw new Error('Unfinished');
+    if(p.k==='n') return P.num(p.v);
+    if(p.k==='v') return P.vr(p.v);
+    if(p.k==='('){ const v=expr(); if(!peek()||peek().k!==')') throw new Error('Missing )'); i++; return v; }
+    throw new Error('Unexpected');
+  }
+  const v=expr(); if(i<t.length) throw new Error('Unexpected'); return v;
+}
+
+/* returns null if the typed answer is in simplest form, otherwise a message */
+function simplestFormIssue(str){
+  const t=tokenize(str);
+  if(t.some(x=>'*/()'.includes(x.k))) return "Write the answer without ×, ÷ or brackets.";
+  const keys=new Set(); let i=0, first=true;
+  while(i<t.length){
+    if(t[i].k==='+'||t[i].k==='-') i++; else if(!first) return "Something is out of place in your answer.";
+    first=false;
+    if(i<t.length&&(t[i].k==='+'||t[i].k==='-')) return "You have two signs in a row. Keep just one.";
+    const m={}; let any=false;
+    if(i<t.length&&t[i].k==='n'){ any=true; i++; if(t[i]&&t[i].k==='^') return "Work out the number power first."; }
+    while(i<t.length&&t[i].k==='v'){
+      const v=t[i].v; if(m[v]) return `Use a power instead of repeating a letter, e.g. ${v}×${v} is ${v}².`;
+      i++; let e=1;
+      if(t[i]&&t[i].k==='^'){ i++; if(!t[i]||t[i].k!=='n') return "Type a number for the power."; e=t[i].v; i++; }
+      m[v]=e; any=true;
+    }
+    if(!any) return "Your answer is unfinished.";
+    if(i<t.length&&t[i].k==='n') return "Put the number in front of the letters.";
+    const k=mkey(m); if(keys.has(k)) return "There are still like terms to collect."; keys.add(k);
+  }
+  return null;
+}
+
+/* ---------- Pretty printing ---------- */
+function pretty(expr, withCaretBox){
+  let out='', prev='';
+  for(let i=0;i<expr.length;i++){
+    const ch=expr[i];
+    if(ch===' ') continue;
+    if('+-*/'.includes(ch)){
+      const sym={'+':'+','-':'−','*':'×','/':'÷'}[ch];
+      out += (prev && /[a-z0-9)]/i.test(prev)) ? ` ${sym} ` : sym;
+    } else if(ch==='^'){
+      let j=i+1, d=''; while(j<expr.length&&/\d/.test(expr[j])) d+=expr[j++];
+      out += d ? `<sup>${d}</sup>` : (withCaretBox ? '<sup style="opacity:.5">□</sup>' : '');
+      i=j-1; prev='0'; continue;
+    } else if(/[a-z]/i.test(ch)) out+=`<i>${ch}</i>`;
+    else out+=ch;
+    prev=ch;
+  }
+  return out;
+}
+const fnum = c => String(Math.round(c*10000)/10000);
+function fmtPoly(p){
+  const terms=[...p.values()];
+  if(!terms.length) return '0';
+  const deg=t=>Object.values(t.m).reduce((a,b)=>a+b,0);
+  const vk=t=>Object.keys(t.m).sort().join('');
+  terms.sort((a,b)=>deg(b)-deg(a)||vk(a).localeCompare(vk(b)));
+  let s='';
+  terms.forEach((t,idx)=>{
+    const neg=t.c<0, a=Math.abs(t.c), vars=Object.keys(t.m).filter(v=>t.m[v]).sort();
+    const body = vars.length
+      ? (Math.abs(a-1)<EPS?'':fnum(a)) + vars.map(v=>`<i>${v}</i>`+(t.m[v]>1?`<sup>${t.m[v]}</sup>`:'')).join('')
+      : fnum(a);
+    s += idx===0 ? (neg?'−':'')+body : (neg?' − ':' + ')+body;
+  });
+  return s;
+}
+/* ---------- Question bank ----------
+   q: question (* = ×, / = ÷). r: worksheet reference (blank = new question).
+   L: lines of working, each written after "=":
+      [expression, step name, hint, flags]   flags: "g" = grouping step, "o" = may be done in your head */
+const GL="Group like terms", CL="Collect like terms", SB="Simplify the bracket", SBS="Simplify the brackets",
+      RB="Remove the bracket", MF="Multiply first", DF="Divide first", MD="× and ÷ first", MU="Multiply", DV="Divide",
+      NL="Numbers together, letters together";
+const GH="Move the terms so like terms sit next to each other. Each term keeps the sign in front of it.";
+const NLH="Split each term into a number and letters (4t = 4 × t). Write all the numbers first, then all the letters.";
+const RBM="Subtracting a negative is adding: − (−) becomes +.";
+const RBP="Adding a negative is subtracting: + (−) becomes −.";
+
+const TYPES = [
+{name:"Collecting like terms", tip:"Group like terms together, then collect them. Numbers on their own are like terms too.", qs:[
+ {r:"3(a)",q:"4b-2b-2",L:[["2b-2",CL,"4b and 2b are like terms, so subtract 4 − 2. The −2 has no letter, so it stays as it is."]]},
+ {r:"3(b)",q:"2+y-3y+5y",L:[["2+3y",CL,"y means 1y. Collect the y terms: 1 − 3 + 5. Keep the 2 as it is."]]},
+ {q:"2+x-3+7x",L:[["2-3+x+7x",GL,GH,"g"],["-1+8x",CL,"Numbers: 2 − 3. The x terms: x + 7x means 1 + 7."]]},
+ {q:"7a-3a+5",L:[["4a+5",CL,"Collect the a terms: 7 − 3. Keep +5 as it is."]]},
+ {q:"6-2x+9x",L:[["6+7x",CL,"Collect the x terms: −2 + 9. Keep the 6 as it is."]]},
+ {q:"3m+4-8m+m",L:[["3m-8m+m+4",GL,GH,"g"],["-4m+4",CL,"m means 1m. Work out 3 − 8 + 1."]]},
+ {q:"10+2k-7-5k",L:[["10-7+2k-5k",GL,GH,"g"],["3-3k",CL,"Numbers: 10 − 7. The k terms: 2 − 5."]]},
+ {q:"-4p+6+p-2",L:[["-4p+p+6-2",GL,GH,"g"],["-3p+4",CL,"p means 1p: −4 + 1. Numbers: 6 − 2."]]}
+]},
+{name:"Like terms with two letters", tip:"Group each letter's terms together, then collect them. Different letters can't be combined.", qs:[
+ {r:"4(a)",q:"5a-2c+a+3c",L:[["5a+a-2c+3c",GL,GH,"g"],["6a+c",CL,"a terms: 5 + 1. c terms: −2 + 3. Write 1c as c."]]},
+ {q:"3x+4y-x+2y",L:[["3x-x+4y+2y",GL,GH,"g"],["2x+6y",CL,"x terms: 3 − 1. y terms: 4 + 2."]]},
+ {q:"7p-2q-3p-5q",L:[["7p-3p-2q-5q",GL,GH,"g"],["4p-7q",CL,"p terms: 7 − 3. q terms: −2 − 5."]]},
+ {q:"-2m+6n+5m-n",L:[["-2m+5m+6n-n",GL,GH,"g"],["3m+5n",CL,"m terms: −2 + 5. n terms: 6 − 1."]]},
+ {q:"4h+k-9h+3k",L:[["4h-9h+k+3k",GL,GH,"g"],["-5h+4k",CL,"h terms: 4 − 9. k terms: 1 + 3."]]},
+ {q:"8s-3t-8s+t",L:[["8s-8s-3t+t",GL,GH,"g"],["-2t",CL,"8s − 8s = 0, so the s terms disappear. t terms: −3 + 1."]]}
+]},
+{name:"Subtracting a bracket", tip:"Simplify inside the bracket, remove the bracket carefully, then group and collect.", qs:[
+ {r:"4(b)",q:"m-(2n-5n)+3m",L:[["m-(-3n)+3m",SB,"Inside the bracket: 2n − 5n means 2 − 5. Keep the minus in front of the bracket."],["m+3n+3m",RB,RBM],["m+3m+3n",GL,GH,"g"],["4m+3n",CL,"m terms: 1 + 3."]]},
+ {q:"a+(4b-7b)-2a",L:[["a+(-3b)-2a",SB,"Inside the bracket: 4 − 7."],["a-3b-2a",RB,RBP],["a-2a-3b",GL,GH,"g"],["-a-3b",CL,"a terms: 1 − 2 = −1, written as −a."]]},
+ {q:"5x-(3y-8y)-x",L:[["5x-(-5y)-x",SB,"Inside the bracket: 3 − 8."],["5x+5y-x",RB,RBM],["5x-x+5y",GL,GH,"g"],["4x+5y",CL,"x terms: 5 − 1."]]},
+ {q:"2p-(6q-2q)+7p",L:[["2p-4q+7p",SB,"Inside the bracket: 6 − 2. The minus in front of the bracket stays."],["2p+7p-4q",GL,GH,"g"],["9p-4q",CL,"p terms: 2 + 7."]]},
+ {q:"-3k-(k-4k)+2h",L:[["-3k-(-3k)+2h",SB,"Inside the bracket: k means 1k, so 1 − 4."],["-3k+3k+2h",RB,RBM],["2h",CL,"−3k + 3k = 0, so only the h term is left."]]},
+ {q:"6r-(2s-9s)-4r",L:[["6r-(-7s)-4r",SB,"Inside the bracket: 2 − 9."],["6r+7s-4r",RB,RBM],["6r-4r+7s",GL,GH,"g"],["2r+7s",CL,"r terms: 6 − 4."]]}
+]},
+{name:"Multiply before you add or subtract", tip:"× and ÷ come before + and −. Multiply first, then collect like terms.", qs:[
+ {r:"5(a)",q:"c-3c*7",L:[["c-21c",MF,"× comes before −. For 3c × 7, work out 3 × 7 and keep the c."],["-20c",CL,"c means 1c: 1 − 21."]]},
+ {q:"2a+4a*3",L:[["2a+12a",MF,"4 × 3, keep the a."],["14a",CL,"2 + 12."]]},
+ {q:"5y-2*6y",L:[["5y-12y",MF,"2 × 6, keep the y."],["-7y",CL,"5 − 12 is negative."]]},
+ {q:"9m-m*4",L:[["9m-4m",MF,"m × 4 is 4 lots of m."],["5m",CL,"9 − 4."]]},
+ {q:"3*5k-20k",L:[["15k-20k",MF,"3 × 5, keep the k."],["-5k",CL,"15 − 20 is negative."]]},
+ {q:"x+8*x-6",L:[["x+8x-6",MF,"8 × x is written as 8x."],["9x-6",CL,"x means 1x: 1 + 8. Keep −6 as it is."]]}
+]},
+{name:"Multiplying terms", tip:"Write the numbers together and the letters together, then multiply. Use powers for repeated letters.", qs:[
+ {r:"5(b)",q:"4t*t*5t",L:[["4*5*t*t*t",NL,NLH,"g"],["20t^3",MU,"4 × 5, and t × t × t = t³ (type t, xⁿ, 3)."]]},
+ {r:"7(b)",q:"2p*q*(-q)*5q",L:[["2*(-1)*5*p*q*q*q",NL,"−q is (−1) × q. Write the numbers first, then the letters.","g"],["-10pq^3",MU,"Positive × negative = negative. Count the q's for the power."]]},
+ {r:"8(b)",q:"r*s*12s/3*2r",L:[["12/3*2*r*r*s*s",NL,"Keep the ÷ 3 with the numbers. Write the numbers first, then the letters.","g"],["8r^2s^2",MU,"12 ÷ 3 × 2. Then r × r = r² and s × s = s²."]]},
+ {q:"3a*2a*a",L:[["3*2*a*a*a",NL,NLH,"g"],["6a^3",MU,"3 × 2, and a × a × a = a³."]]},
+ {q:"5m*(-2n)*m",L:[["5*(-2)*m*m*n",NL,"−2n is (−2) × n. Write the numbers first, then the letters.","g"],["-10m^2n",MU,"5 × (−2) is negative. m × m = m², then n."]]},
+ {q:"x*4y*3x*y",L:[["4*3*x*x*y*y",NL,NLH,"g"],["12x^2y^2",MU,"4 × 3. Then x × x = x² and y × y = y²."]]},
+ {q:"18h*k/6*(-h)",L:[["18/6*(-1)*h*h*k",NL,"−h is (−1) × h. Keep the ÷ 6 with the numbers.","g"],["-3h^2k",MU,"18 ÷ 6 × (−1). Then h × h = h², then k."]]},
+ {q:"(-2c)*(-3c)*2d",L:[["(-2)*(-3)*2*c*c*d",NL,NLH,"g"],["12c^2d",MU,"Negative × negative = positive. c × c = c², then d."]]}
+]},
+{name:"Mixed operations", tip:"Do × and ÷ first, then group and collect like terms.", qs:[
+ {r:"6(a)",q:"4t*3-15t/5",L:[["12t-3t",MD,"4t × 3: work out 4 × 3, keep the t. 15t ÷ 5: work out 15 ÷ 5, keep the t."],["9t",CL,"12 − 3."]]},
+ {r:"6(b)",q:"-2x+2x*3-1+5x",L:[["-2x+6x-1+5x",MF,"2x × 3: work out 2 × 3, keep the x."],["-2x+6x+5x-1",GL,GH,"g"],["9x-1",CL,"x terms: −2 + 6 + 5."]]},
+ {r:"27(c)",q:"2k*(-3)-8k/4",L:[["-6k-2k",MD,"2k × (−3) is negative. 8k ÷ 4: work out 8 ÷ 4, keep the k and the minus in front."],["-8k",CL,"Both terms are negative."]]},
+ {r:"28(a)",q:"15-6b/2+3+2b",L:[["15-3b+3+2b",DF,"6b ÷ 2: work out 6 ÷ 2, keep the b."],["15+3-3b+2b",GL,GH,"g"],["18-b",CL,"Numbers: 15 + 3. b terms: −3 + 2 = −1, written as −b."]]},
+ {r:"28(b)",q:"2p+4p/2-p+4",L:[["2p+2p-p+4",DF,"4p ÷ 2: work out 4 ÷ 2, keep the p."],["3p+4",CL,"p terms: 2 + 2 − 1. Keep +4."]]},
+ {r:"28(c)",q:"4c-6d-2d*3+3c",L:[["4c-6d-6d+3c",MF,"2d × 3: work out 2 × 3, keep the d."],["4c+3c-6d-6d",GL,GH,"g"],["7c-12d",CL,"c terms: 4 + 3. d terms: −6 − 6."]]},
+ {q:"5a*2-12a/4",L:[["10a-3a",MD,"Work out 5 × 2 and 12 ÷ 4, keeping the a."],["7a",CL,"10 − 3."]]},
+ {q:"20y/5+3y*2-7",L:[["4y+6y-7",MD,"Work out 20 ÷ 5 and 3 × 2, keeping the y."],["10y-7",CL,"y terms: 4 + 6. Keep −7."]]},
+ {q:"8-9m/3+2m*4",L:[["8-3m+8m",MD,"Work out 9 ÷ 3 and 2 × 4, keeping the m."],["8+5m",CL,"m terms: −3 + 8. Keep the 8."]]},
+ {q:"3x-4*2y+14x/7+y",L:[["3x-8y+2x+y",MD,"4 × 2y is 8 lots of y. 14x ÷ 7: work out 14 ÷ 7, keep the x."],["3x+2x-8y+y",GL,GH,"g"],["5x-7y",CL,"x terms: 3 + 2. y terms: −8 + 1."]]},
+ {q:"6n*(-2)+10n/5-3",L:[["-12n+2n-3",MD,"6n × (−2) is negative. 10n ÷ 5: work out 10 ÷ 5, keep the n."],["-10n-3",CL,"n terms: −12 + 2. Keep −3."]]}
+]},
+{name:"Bracket, then multiply", tip:"Simplify the brackets first, then multiply.", qs:[
+ {r:"7(a)",q:"3k*(k-5k)",L:[["3k*(-4k)",SB,"k − 5k means 1 − 5. Keep the answer in brackets."],["-12k^2",MU,"3 × (−4), and k × k = k²."]]},
+ {r:"8(a)",q:"(c+c)*(4d-d)*c",L:[["2c*3d*c",SBS,"c + c is 2 lots of c. 4d − d means 4 − 1."],["2*3*c*c*d",NL,NLH,"g"],["6c^2d",MU,"2 × 3, c × c = c², then d."]]},
+ {r:"27(a)",q:"(x+x)*(x*x*x)",L:[["2x*x^3",SBS,"x + x is 2 lots of x. x × x × x = x³."],["2x^4",MU,"x × x³: add the powers, 1 + 3."]]},
+ {q:"2a*(3a-a)",L:[["2a*2a",SB,"3a − a means 3 − 1."],["4a^2",MU,"2 × 2, and a × a = a²."]]},
+ {q:"(5m-2m)*4n",L:[["3m*4n",SB,"5 − 2."],["12mn",MU,"3 × 4, then write m and n side by side."]]},
+ {q:"-p*(6p-2p)*p",L:[["-p*4p*p",SB,"6 − 2."],["-4p^3",MU,"−p means −1p. −1 × 4, and p × p × p = p³."]]},
+ {q:"(y+y+y)*(2y-7y)",L:[["3y*(-5y)",SBS,"y + y + y is 3 lots of y. 2y − 7y means 2 − 7."],["-15y^2",MU,"3 × (−5), and y × y = y²."]]},
+ {q:"(h*h)*(9k-4k)*2h",L:[["h^2*5k*2h",SBS,"h × h = h². 9k − 4k means 9 − 4."],["5*2*h^2*h*k",NL,NLH,"g"],["10h^3k",MU,"5 × 2. h² × h = h³, then k."]]}
+]},
+{name:"Bracket, then divide", tip:"Simplify the bracket, divide, then collect like terms.", qs:[
+ {r:"27(b)",q:"4v-(3v-8v)/5",L:[["4v-(-5v)/5",SB,"3v − 8v means 3 − 8. Keep the bracket and the ÷ 5."],["4v-(-v)",DV,"(−5v) ÷ 5: negative ÷ positive is negative. Write 1v as v."],["4v+v",RB,RBM,"o"],["5v",CL,"4 + 1."]]},
+ {q:"2a+(9a-3a)/3",L:[["2a+6a/3",SB,"Inside the bracket: 9 − 3."],["2a+2a",DV,"6a ÷ 3: work out 6 ÷ 3, keep the a."],["4a",CL,"2 + 2."]]},
+ {q:"7m-(2m+10m)/4",L:[["7m-12m/4",SB,"Inside the bracket: 2 + 10. Keep the minus in front."],["7m-3m",DV,"12m ÷ 4: work out 12 ÷ 4, keep the m."],["4m",CL,"7 − 3."]]},
+ {q:"x+(4x-12x)/2",L:[["x+(-8x)/2",SB,"Inside the bracket: 4 − 12 is negative."],["x+(-4x)",DV,"(−8x) ÷ 2: negative ÷ positive is negative."],["x-4x",RB,RBP,"o"],["-3x",CL,"1 − 4."]]},
+ {q:"(15k-5k)/2-6k",L:[["10k/2-6k",SB,"Inside the bracket: 15 − 5."],["5k-6k",DV,"10k ÷ 2: work out 10 ÷ 2, keep the k."],["-k",CL,"5 − 6 = −1, written as −k."]]},
+ {q:"3y-(y-7y)/6+2",L:[["3y-(-6y)/6+2",SB,"Inside the bracket: y means 1y, so 1 − 7."],["3y-(-y)+2",DV,"(−6y) ÷ 6 is negative."],["3y+y+2",RB,RBM,"o"],["4y+2",CL,"3 + 1. Keep +2."]]}
+]}
+];
+
+/* ---------- Checking a line of working ---------- */
+const norm = s => String(s).replace(/×/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s+/g,'').toLowerCase().replace(/^\+/,'');
+
+/* split at top-level + and − into signed terms */
+function splitTerms(str){
+  const s=norm(str), out=[]; let depth=0, cur='', sign=1, prev='';
+  for(const ch of s){
+    if(depth===0 && (ch==='+'||ch==='-')){
+      if(cur!=='' && /[a-z0-9)]/i.test(prev)){ out.push({sign,body:cur}); sign=ch==='-'?-1:1; cur=''; prev=ch; continue; }
+      if(cur===''){ if(ch==='-') sign=-sign; prev=ch; continue; }
+    }
+    if(ch==='(') depth++; else if(ch===')') depth--;
+    cur+=ch; prev=ch;
+  }
+  out.push({sign,body:cur});
+  return out;
+}
+const termPoly = t => t.sign<0 ? P.neg(parse(t.body)) : parse(t.body);
+const isSimpleBody = b => b!=='' && !/[()*\/]/.test(b) && simplestFormIssue(b)===null;
+
+/* split a term's body into factors at top-level × and ÷ (and implied × beside brackets) */
+function factorsOf(body){
+  const out=[]; let depth=0, cur='', div=false;
+  const push=()=>{ if(cur) out.push({div,str:cur}); cur=''; div=false; };
+  for(const ch of body){
+    if(depth===0 && (ch==='*'||ch==='/')){ push(); div=ch==='/'; continue; }
+    if(depth===0 && cur && ((ch==='(' && /[a-z0-9)]/i.test(cur.slice(-1))) || (cur.endsWith(')') && /[a-z0-9]/i.test(ch)))){ const d=div; push(); div=false; }
+    if(ch==='(') depth++; else if(ch===')') depth--;
+    cur+=ch;
+  }
+  push(); return out;
+}
+function stripParens(s){
+  while(s.startsWith('(') && s.endsWith(')')){
+    let d=0, whole=true;
+    for(let i=0;i<s.length;i++){ if(s[i]==='(') d++; else if(s[i]===')') d--; if(d===0 && i<s.length-1){ whole=false; break; } }
+    if(!whole) break; s=s.slice(1,-1);
+  }
+  return s;
+}
+function factorSimple(str){ let s=stripParens(str); if(/^[+-]/.test(s)) s=s.slice(1); return s!=='' && !/[()*\/+\-]/.test(s) && simplestFormIssue(s)===null; }
+function polyKeyAbs(p){
+  const e=[...p.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
+  const flip = e.length && e[0][1].c<0 ? -1 : 1;
+  return e.map(([k,t])=>k+':'+Math.round(t.c*flip*1e6)/1e6).join('|');
+}
+const factorSig = f => (f.div?'/':'*') + polyKeyAbs(parse(f.str)) + (factorSimple(f.str)?'s':'c');
+
+function termMatch(a,b){
+  if(!P.eq(termPoly(a),termPoly(b))) return false;
+  const as=isSimpleBody(a.body), bs=isSimpleBody(b.body);
+  if(as!==bs) return false;
+  if(as) return true;
+  const fa=factorsOf(a.body).map(factorSig).sort().join(','), fb=factorsOf(b.body).map(factorSig).sort().join(',');
+  return fa===fb;
+}
+function likeKey(t){
+  const p=termPoly(t);
+  if(p.size===0) return '0';
+  if(p.size===1) return [...p.keys()][0];
+  throw new Error('mixed');
+}
+function adjacent(terms){
+  const keys=terms.map((t,i)=>{ try{ return likeKey(t); }catch(e){ return 'mix'+i; } });
+  const seen=new Set();
+  for(let i=0;i<keys.length;i++){ if(i>0 && keys[i]===keys[i-1]) continue; if(seen.has(keys[i])) return false; seen.add(keys[i]); }
+  return true;
+}
+/* numbers written together and letters written together in one product */
+function productGrouped(t){
+  const fs=factorsOf(t.body); if(fs.length<2) return false;
+  const cls=[];
+  for(const f of fs){
+    let s=stripParens(f.str); if(/^[+-]/.test(s)) s=s.slice(1);
+    if(/^\d+(\.\d+)?$/.test(s)) cls.push('n');
+    else if(/^([a-z](\^\d+)?)+$/.test(s)) cls.push('l');
+    else return false;
+  }
+  let changes=0; for(let i=1;i<cls.length;i++) if(cls[i]!==cls[i-1]) changes++;
+  return changes<=1;
+}
+function lineMatch(input, expected, flags){
+  try{
+    const g=(flags||'').includes('g');
+    const pt=splitTerms(input), et=splitTerms(expected);
+    if(g && et.length===1) return pt.length===1 && productGrouped(pt[0]) && P.eq(parse(input),parse(expected));
+    if(pt.length!==et.length) return false;
+    const used=et.map(()=>false);
+    for(const p of pt){ const j=et.findIndex((e,k)=>!used[k] && termMatch(p,e)); if(j<0) return false; used[j]=true; }
+    return g ? adjacent(pt) : true;
+  }catch(e){ return false; }
+}
+/*ENGINE-END*/
+
+/* ---------- Game ---------- */
+const $=s=>document.querySelector(s);
+const TICK='<svg class="mark tick" viewBox="0 0 24 24" aria-label="correct"><path d="M4 13l5 5L20 6"/></svg>';
+const PEN='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3.5l6 6-9 9H5.5v-6z" fill="var(--h0)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5.5 18.5L3 21h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11 7l6 6" stroke="currentColor" stroke-width="1.8"/></svg>';
+let S=null, lastView='startView', HL=false;
+const flagsOf = ln => ln[3]||'';
+
+function newState(){
+  return {t:0, score:0, right:0, wrong:0, answered:0, cleared:[], used:TYPES.map(()=>new Set()),
+          q:null, qi:-1, qpoly:null, vars:[], step:0, rows:[], tries:0, stuck:0, mistakes:0, input:'',
+          follow:false, revealed:false, done:false, colors:new Map()};
+}
+function show(id){
+  ['startView','playView','bankView','winView'].forEach(v=>$('#'+v).hidden = v!==id);
+  if(id!=='bankView') lastView=id;
+  window.scrollTo(0,0);
+}
+function renderProgress(){
+  $('#progress').innerHTML = TYPES.map((ty,i)=>{
+    const done = S && S.cleared.includes(i);
+    const cls = done ? 'done' : (S && i===S.t && !$('#playView').hidden ? 'now' : '');
+    return `<li class="${cls}" title="${ty.name}">${done?'✓':i+1}</li>`;
+  }).join('');
+}
+const showNum = n => String(n).replace('-','−');
+function renderScore(){ const b=$('#score'); b.textContent = S?showNum(S.score):0; b.classList.toggle('neg', !!S && S.score<0); }
+function floatScore(txt, up){
+  const f=document.createElement('span'); f.className='float '+(up?'up':'down'); f.textContent=txt;
+  $('.score').appendChild(f); setTimeout(()=>f.remove(),1000);
+}
+
+/* ----- expression display with optional like-term highlighting ----- */
+function colorOf(key){
+  if(!S.colors.has(key)) S.colors.set(key, S.colors.size % 6);
+  return S.colors.get(key);
+}
+function renderExpr(str, typing){
+  if(!HL || !S) return pretty(str, typing);
+  const terms=splitTerms(str);
+  return terms.map((t,idx)=>{
+    const sign = t.sign<0 ? '−' : (idx===0 ? '' : '+');
+    let cls='';
+    try{ if(t.body) cls=' hl'+colorOf(likeKey(t)); }catch(e){}
+    const inner = (sign ? sign+(t.body?'&thinsp;':'') : '') + pretty(t.body, typing);
+    return (idx?' ':'') + `<span class="hlt${cls}">${inner}</span>`;
+  }).join('');
+}
+
+function startGame(){ S=newState(); show('playView'); loadQuestion(false); }
+
+function pickQuestion(ti, follow){
+  const qs=TYPES[ti].qs, used=S.used[ti];
+  let pool=qs.map((_,i)=>i).filter(i=>!used.has(i));
+  if(!pool.length){ used.clear(); pool=qs.map((_,i)=>i).filter(i=>i!==S.qi); }
+  const pref = follow ? pool.filter(i=>!qs[i].r) : pool.filter(i=>qs[i].r);
+  if(pref.length) pool=pref;
+  const i=pool[Math.floor(Math.random()*pool.length)]; used.add(i); return i;
+}
+
+function loadQuestion(follow){
+  S.qi=pickQuestion(S.t, follow);
+  S.q=TYPES[S.t].qs[S.qi];
+  S.qpoly=parse(S.q.q);
+  S.vars=[...new Set(S.q.q.match(/[a-z]/g))].sort();
+  Object.assign(S,{step:0,rows:[],tries:0,stuck:0,mistakes:0,input:'',follow,revealed:false,done:false,colors:new Map()});
+  /* fix colours in order of appearance so they stay the same on every line */
+  [S.q.q, ...S.q.L.map(l=>l[0])].forEach(e=>splitTerms(e).forEach(t=>{ try{ colorOf(likeKey(t)); }catch(x){} }));
+  $('#padArea').hidden=false; $('#resultArea').hidden=true;
+  $('#letters').innerHTML = S.vars.map(v=>`<button class="key var" data-k="${v}" type="button">${v}</button>`).join('');
+  setFeedback('', ''); hideHint();
+  renderProgress(); renderScore(); renderSheet();
+}
+
+function stepName(i){ return S.q.L[i][1]; }
+function renderSheet(){
+  const ty=TYPES[S.t], q=S.q, L=q.L;
+  const src = S.follow ? '<span class="src follow">One more question of this type</span>'
+            : `<span class="src">${q.r?`Worksheet question ${q.r}`:'New question'}</span>`;
+  let h=`<div class="qmeta"><h2>Type ${S.t+1} of ${TYPES.length}: ${ty.name}</h2>${src}</div>
+    <p class="tip">${ty.tip}</p>
+    <div class="toolbar"><span class="say">Simplify</span>
+      <button class="hlbtn" id="hlBtn" type="button" aria-pressed="${HL}">${PEN}Highlight like terms</button></div>
+    <div class="work">
+    <div class="row qrow"><span class="eqs"></span><span class="ex">${renderExpr(q.q)}</span></div>`;
+  S.rows.forEach(r=>{
+    const a=r.steps[0]+1, b=r.steps[r.steps.length-1]+1;
+    const mg = a===b ? `Step<br>${a}` : `Steps<br>${a}–${b}`;
+    h+=`<div class="row done"><span class="mg">${mg}</span><span class="eqs">=</span>
+        <span class="ex ${r.revealed?'revealed':''}">${renderExpr(r.raw)}</span>${TICK}
+        <span class="note">${r.steps.map((k,j)=>j?stepName(k).toLowerCase():stepName(k)).join(', then ')}</span></div>`;
+  });
+  if(!S.done){
+    h+=`<div class="row cur"><span class="mg"><span>Step<br>${S.step+1}</span></span><span class="eqs">=</span>
+        <span class="ex"><span class="typing" id="inlineTyping"></span></span>
+        <span class="note">${stepName(S.step)}</span>
+        ${S.tries?`<span class="wrongs">${S.tries} wrong ${S.tries>1?'tries':'try'} on this line</span>`:''}</div>`;
+    for(let j=S.step+1;j<L.length;j++){
+      h+=`<div class="row future"><span class="mg">Step<br>${j+1}</span><span class="eqs">=</span><span class="ex">……</span><span class="note">${stepName(j)}</span></div>`;
+    }
+  }
+  h+='</div>';
+  $('#sheet').innerHTML=h;
+  $('#hlBtn').addEventListener('click',()=>{ HL=!HL; renderSheet(); });
+  renderScreen();
+}
+
+function renderScreen(){
+  const h = S.input ? renderExpr(S.input,true) : '';
+  $('#screenVal').innerHTML = '<span class="eqs">=</span>' + h + '<span class="caret"></span>';
+  const it=$('#inlineTyping'); if(it) it.innerHTML = h + '<span class="caret"></span>';
+  $('#screenLabel').textContent = S.done ? 'Done' : `Step ${S.step+1} of ${S.q.L.length}: ${stepName(S.step)}`;
+}
+
+function setFeedback(msg, cls){ const f=$('#feedback'); f.textContent=msg; f.className='feedback '+(cls||''); }
+function showHint(html){ const h=$('#hint'); h.innerHTML=html; h.hidden=false; }
+function hideHint(){ $('#hint').hidden=true; }
+
+function press(k){
+  if(!S || S.done || $('#playView').hidden) return;
+  if(k==='enter') return submit();
+  if(k==='back') S.input=S.input.slice(0,-1);
+  else if(k==='clear') S.input='';
+  else if(k==='^'){
+    if(!/[a-z)]$/i.test(S.input)){ setFeedback('Type a letter first, then press xⁿ for its power.','note'); return; }
+    S.input+='^';
+  }
+  else if(S.input.length<40) S.input+=k;
+  renderScreen();
+}
+
+const lineOK = (raw,i) => lineMatch(raw, S.q.L[i][0], flagsOf(S.q.L[i]));
+const prevRaw = () => S.rows.length ? S.rows[S.rows.length-1].raw : S.q.q;
+
+function submit(){
+  const raw=S.input;
+  if(!raw.trim()){ setFeedback('Type this line first.','note'); return; }
+  let p;
+  try{ p=parse(raw); }catch(e){ setFeedback('This line is unfinished. Check the last thing you typed.','note'); return; }
+  const i=S.step, L=S.q.L, ln=L[i];
+  if(!P.eq(p,S.qpoly)) return lineWrong(raw);
+  if(norm(raw)===norm(prevRaw())) return tip('This is the same as the line above. Now do the next step: '+ln[1].toLowerCase()+'.');
+  if(lineOK(raw,i)) return accept(raw,[i]);
+  if(flagsOf(ln).includes('o') && i+1<L.length && lineOK(raw,i+1)) return accept(raw,[i,i+1]);
+  for(let j=i+1;j<L.length;j++) if(lineOK(raw,j)) return tip(`Your line is right, but you jumped ahead. Show this step first: ${ln[1].toLowerCase()}.`);
+  if(i===L.length-1){ const issue=simplestFormIssue(raw); if(issue) return tip('Your line is right, but simplify it fully. '+issue); }
+  tip("Your line is equal to the question, but it isn't this step.");
+}
+
+function accept(raw, idx){
+  let n=idx[idx.length-1]+1;
+  while(n<S.q.L.length && flagsOf(S.q.L[n]).includes('g') && lineOK(raw,n)){ idx.push(n); n++; }
+  const pts = S.revealed ? 0 : 10*idx.length;
+  if(pts){ S.score+=pts; S.right+=idx.length; floatScore('+'+pts,true); setFeedback(`Correct! +${pts}`,'ok'); }
+  else setFeedback('That’s it. Keep going.','ok');
+  S.rows.push({raw, steps:idx, revealed:S.revealed});
+  S.step=n; S.tries=0; S.stuck=0; S.revealed=false; S.input=''; hideHint();
+  renderScore();
+  if(S.step>=S.q.L.length){ S.done=true; renderSheet(); finishQuestion(); }
+  else renderSheet();
+}
+
+function revealIfStuck(){
+  if(S.tries+S.stuck>=3){
+    S.revealed=true;
+    return `<span class="reveal">= ${renderExpr(S.q.L[S.step][0])}</span>Type this line to move on.`;
+  }
+  return '';
+}
+
+function lineWrong(raw){
+  S.score-=10; S.wrong++; S.mistakes++; S.tries++;
+  floatScore('−10',false); renderScore();
+  const scr=$('#screen'); scr.classList.remove('shake'); void scr.offsetWidth; scr.classList.add('shake');
+  setFeedback(`Not quite. That line changes the value of the expression. −10`,'bad');
+  showHint(`<b>Hint: ${stepName(S.step)}</b>${S.q.L[S.step][2]}${revealIfStuck()}`);
+  S.input=''; renderSheet();
+}
+
+function tip(msg){
+  S.stuck++;
+  setFeedback(msg,'note');
+  showHint(`<b>Hint: ${stepName(S.step)}</b>${S.q.L[S.step][2]}${revealIfStuck()}`);
+  S.input=''; renderSheet();
+}
+
+function finishQuestion(){
+  S.answered++;
+  const last = S.t===TYPES.length-1;
+  let html;
+  if(S.mistakes===0){
+    S.cleared.push(S.t);
+    html=`<div class="result clean"><h3>Type cleared!</h3><p>Every line right first time. ${last?'That was the last type.':'Next up: '+TYPES[S.t+1].name+'.'}</p>
+      <button class="btn" id="nextBtn" type="button">${last?'Collect your trophy':'Go to the next type'}</button></div>`;
+  } else {
+    html=`<div class="result again"><h3>${S.mistakes} mistake${S.mistakes>1?'s':''} on this question</h3>
+      <p>Answer one more question of the same type. Finish it with no mistakes to clear this type.</p>
+      <button class="btn" id="nextBtn" type="button">Try one more</button></div>`;
+  }
+  $('#padArea').hidden=true; const ra=$('#resultArea'); ra.innerHTML=html; ra.hidden=false;
+  renderProgress();
+  $('#nextBtn').addEventListener('click',()=>{
+    if(S.mistakes===0){ if(last) return showWin(); S.t++; loadQuestion(false); }
+    else loadQuestion(true);
+    window.scrollTo({top:0});
+  });
+  $('#nextBtn').focus();
+}
+
+function showWin(){
+  show('winView'); renderProgress();
+  $('#stats').innerHTML = `
+    <div class="stat"><b>${showNum(S.score)}</b><span>Final score</span></div>
+    <div class="stat"><b>${S.right}</b><span>Correct lines</span></div>
+    <div class="stat"><b>${S.wrong}</b><span>Wrong lines</span></div>
+    <div class="stat"><b>${S.answered}</b><span>Questions answered</span></div>`;
+  const c=$('#confetti'); c.innerHTML='';
+  const cols=['var(--gold)','var(--h1)','var(--h2)','var(--h3)','var(--ink)'];
+  for(let i=0;i<70;i++){
+    const e=document.createElement('i');
+    e.style.left=Math.random()*100+'vw'; e.style.background=cols[i%cols.length];
+    e.style.animationDuration=(2.2+Math.random()*2.2)+'s'; e.style.animationDelay=(Math.random()*.8)+'s';
+    c.appendChild(e);
+  }
+  setTimeout(()=>c.innerHTML='',5500);
+}
+
+function renderBank(){
+  const total=TYPES.reduce((a,t)=>a+t.qs.length,0), ws=TYPES.reduce((a,t)=>a+t.qs.filter(q=>q.r).length,0);
+  $('#bankIntro').textContent = `${TYPES.length} question types, ${total} questions: ${ws} from the worksheet and ${total-ws} new ones. The full working is shown under each question.`;
+  $('#bankList').innerHTML = TYPES.map((ty,ti)=>`
+    <div class="btype"><h2>Type ${ti+1}: ${ty.name}</h2><p>${ty.tip}</p><ol>
+    ${ty.qs.map(q=>`<li><span class="bq">${pretty(q.q)}</span><span class="tag ${q.r?'ws':''}">${q.r?'Worksheet '+q.r:'New'}</span>
+      <div class="bw">${q.L.map(l=>'= '+pretty(l[0])).join('&emsp;')}</div></li>`).join('')}
+    </ol></div>`).join('');
+}
+function openBank(){ renderBank(); show('bankView'); }
+
+/* ---------- Wiring ---------- */
+document.addEventListener('click',e=>{ const k=e.target.closest('.key'); if(k) press(k.dataset.k); });
+document.addEventListener('keydown',e=>{
+  if($('#playView').hidden || !S || S.done) return;
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.target.closest && e.target.closest('button') && e.key==='Enter') { /* let focused buttons work normally */
+    if(!e.target.classList.contains('key')) return; }
+  let k=null;
+  if(/^[0-9]$/.test(e.key)) k=e.key;
+  else if('+*/()^'.includes(e.key)) k=e.key;
+  else if(e.key==='-'||e.key==='−') k='-';
+  else if(e.key==='Backspace') k='back';
+  else if(e.key==='Escape') k='clear';
+  else if(e.key==='Enter') k='enter';
+  else if(/^[a-z]$/i.test(e.key) && S.vars.includes(e.key.toLowerCase())) k=e.key.toLowerCase();
+  if(!k) return;
+  e.preventDefault();
+  const btn=document.querySelector(`.key[data-k="${CSS.escape(k)}"]`);
+  if(btn){ btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),90); }
+  press(k);
+});
+$('#startBtn').addEventListener('click',startGame);
+$('#againBtn').addEventListener('click',startGame);
+$('#bankBtn').addEventListener('click',openBank);
+$('#winBank').addEventListener('click',openBank);
+$('#bankLink').addEventListener('click',openBank);
+$('#bankBack').addEventListener('click',()=>{ show(lastView); renderProgress(); });
+renderProgress(); renderScore();
+</script>
+</body>
+</html>
