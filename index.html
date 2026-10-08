@@ -219,7 +219,7 @@ svg.tick path{stroke:var(--green)}
   <header class="top">
     <p class="brand">Simplify <span>it!</span></p>
     <ol class="progress" id="progress" aria-label="Question types"></ol>
-    <button class="linkbtn" id="bankLink" type="button" disabled hidden>Question bank</button>
+    <button class="linkbtn" id="bankLink" type="button">Question bank</button>
     <div class="score" aria-live="polite"><small>Score</small><b id="score">0</b></div>
   </header>
 
@@ -235,7 +235,7 @@ svg.tick path{stroke:var(--green)}
       <p class="lead">Eight question types from your worksheet. Write each line of working after the equals sign, just like in your homework, and earn the trophy.</p>
       <div class="cta">
         <button class="btn" id="startBtn" type="button">Start the game</button>
-        <button class="btn ghost" id="bankBtn" type="button" disabled hidden>See the question bank</button>
+        <button class="btn ghost" id="bankBtn" type="button">See the question bank</button>
       </div>
     </div>
     <div class="rules">
@@ -314,13 +314,14 @@ svg.tick path{stroke:var(--green)}
     <div class="stats" id="stats"></div>
     <div class="cta">
       <button class="btn" id="againBtn" type="button">Play again</button>
-      <button class="btn ghost" id="winBank" type="button" disabled hidden>See the question bank</button>
+      <button class="btn ghost" id="winBank" type="button">See the question bank</button>
     </div>
   </section>
 </div>
 <div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <script>
+/*ENGINE-START*/
 /* ---------- Algebra engine: polynomials as Map(key -> {c, m}) ---------- */
 const mkey = m => Object.keys(m).filter(v=>m[v]).sort().map(v=>v+m[v]).join('');
 const EPS = 1e-9;
@@ -452,8 +453,10 @@ function fmtPoly(p){
   });
   return s;
 }
-
-/* ---------- Question bank ---------- */
+/* ---------- Question bank ----------
+   q: question (* = ×, / = ÷). r: worksheet reference (blank = new question).
+   L: lines of working, each written after "=":
+      [expression, step name, hint, flags]   flags: "g" = grouping step, "o" = may be done in your head */
 const GL="Group like terms", CL="Collect like terms", SB="Simplify the bracket", SBS="Simplify the brackets",
       RB="Remove the bracket", MF="Multiply first", DF="Divide first", MD="× and ÷ first", MU="Multiply", DV="Divide",
       NL="Numbers together, letters together";
@@ -543,6 +546,7 @@ const TYPES = [
 /* ---------- Checking a line of working ---------- */
 const norm = s => String(s).replace(/×/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s+/g,'').toLowerCase().replace(/^\+/,'');
 
+/* split at top-level + and − into signed terms */
 function splitTerms(str){
   const s=norm(str), out=[]; let depth=0, cur='', sign=1, prev='';
   for(const ch of s){
@@ -559,6 +563,7 @@ function splitTerms(str){
 const termPoly = t => t.sign<0 ? P.neg(parse(t.body)) : parse(t.body);
 const isSimpleBody = b => b!=='' && !/[()*\/]/.test(b) && simplestFormIssue(b)===null;
 
+/* split a term's body into factors at top-level × and ÷ (and implied × beside brackets) */
 function factorsOf(body){
   const out=[]; let depth=0, cur='', div=false;
   const push=()=>{ if(cur) out.push({div,str:cur}); cur=''; div=false; };
@@ -606,6 +611,7 @@ function adjacent(terms){
   for(let i=0;i<keys.length;i++){ if(i>0 && keys[i]===keys[i-1]) continue; if(seen.has(keys[i])) return false; seen.add(keys[i]); }
   return true;
 }
+/* numbers written together and letters written together in one product */
 function productGrouped(t){
   const fs=factorsOf(t.body); if(fs.length<2) return false;
   const cls=[];
@@ -629,6 +635,7 @@ function lineMatch(input, expected, flags){
     return g ? adjacent(pt) : true;
   }catch(e){ return false; }
 }
+/*ENGINE-END*/
 
 /* ---------- Game ---------- */
 const $=s=>document.querySelector(s);
@@ -655,12 +662,13 @@ function renderProgress(){
   }).join('');
 }
 const showNum = n => String(n).replace('-','−');
-function renderScore(){ const b=\$('#score'); b.textContent = S?showNum(S.score):0; b.classList.toggle('neg', !!S && S.score<0); }
+function renderScore(){ const b=$('#score'); b.textContent = S?showNum(S.score):0; b.classList.toggle('neg', !!S && S.score<0); }
 function floatScore(txt, up){
   const f=document.createElement('span'); f.className='float '+(up?'up':'down'); f.textContent=txt;
-  \$('.score').appendChild(f); setTimeout(()=>f.remove(),1000);
+  $('.score').appendChild(f); setTimeout(()=>f.remove(),1000);
 }
 
+/* ----- expression display with optional like-term highlighting ----- */
 function colorOf(key){
   if(!S.colors.has(key)) S.colors.set(key, S.colors.size % 6);
   return S.colors.get(key);
@@ -694,9 +702,10 @@ function loadQuestion(follow){
   S.qpoly=parse(S.q.q);
   S.vars=[...new Set(S.q.q.match(/[a-z]/g))].sort();
   Object.assign(S,{step:0,rows:[],tries:0,stuck:0,mistakes:0,input:'',follow,revealed:false,done:false,colors:new Map()});
+  /* fix colours in order of appearance so they stay the same on every line */
   [S.q.q, ...S.q.L.map(l=>l[0])].forEach(e=>splitTerms(e).forEach(t=>{ try{ colorOf(likeKey(t)); }catch(x){} }));
   $('#padArea').hidden=false; $('#resultArea').hidden=true;
-  \$('#letters').innerHTML = S.vars.map(v=>`<button class="key var" data-k="${v}" type="button">${v}</button>`).join('');
+  $('#letters').innerHTML = S.vars.map(v=>`<button class="key var" data-k="${v}" type="button">${v}</button>`).join('');
   setFeedback('', ''); hideHint();
   renderProgress(); renderScore(); renderSheet();
 }
@@ -705,7 +714,7 @@ function stepName(i){ return S.q.L[i][1]; }
 function renderSheet(){
   const ty=TYPES[S.t], q=S.q, L=q.L;
   const src = S.follow ? '<span class="src follow">One more question of this type</span>'
-            : `<span class="src">${q.r?`Worksheet question \${q.r}`:'New question'}</span>`;
+            : `<span class="src">${q.r?`Worksheet question ${q.r}`:'New question'}</span>`;
   let h=`<div class="qmeta"><h2>Type ${S.t+1} of ${TYPES.length}: ${ty.name}</h2>${src}</div>
     <p class="tip">${ty.tip}</p>
     <div class="toolbar"><span class="say">Simplify</span>
@@ -723,35 +732,35 @@ function renderSheet(){
     h+=`<div class="row cur"><span class="mg"><span>Step<br>${S.step+1}</span></span><span class="eqs">=</span>
         <span class="ex"><span class="typing" id="inlineTyping"></span></span>
         <span class="note">${stepName(S.step)}</span>
-        ${S.tries?`<span class="wrongs">${S.tries} wrong${S.tries>1?'tries':'try'} on this line</span>`:''}</div>`;
+        ${S.tries?`<span class="wrongs">${S.tries} wrong ${S.tries>1?'tries':'try'} on this line</span>`:''}</div>`;
     for(let j=S.step+1;j<L.length;j++){
       h+=`<div class="row future"><span class="mg">Step<br>${j+1}</span><span class="eqs">=</span><span class="ex">……</span><span class="note">${stepName(j)}</span></div>`;
     }
   }
   h+='</div>';
-  \$('#sheet').innerHTML=h;
-  \$('#hlBtn').addEventListener('click',()=>{ HL=!HL; renderSheet(); });
+  $('#sheet').innerHTML=h;
+  $('#hlBtn').addEventListener('click',()=>{ HL=!HL; renderSheet(); });
   renderScreen();
 }
 
 function renderScreen(){
   const h = S.input ? renderExpr(S.input,true) : '';
-  \$('#screenVal').innerHTML = '<span class="eqs">=</span>' + h + '<span class="caret"></span>';
-  const it=\$('#inlineTyping'); if(it) it.innerHTML = h + '<span class="caret"></span>';
-  \$('#screenLabel').textContent = S.done ? 'Done' : `Step ${S.step+1} of ${S.q.L.length}: ${stepName(S.step)}`;
+  $('#screenVal').innerHTML = '<span class="eqs">=</span>' + h + '<span class="caret"></span>';
+  const it=$('#inlineTyping'); if(it) it.innerHTML = h + '<span class="caret"></span>';
+  $('#screenLabel').textContent = S.done ? 'Done' : `Step ${S.step+1} of ${S.q.L.length}: ${stepName(S.step)}`;
 }
 
-function setFeedback(msg, cls){ const f=\$('#feedback'); f.textContent=msg; f.className='feedback '+(cls||''); }
-function showHint(html){ const h=\$('#hint'); h.innerHTML=html; h.hidden=false; }
-function hideHint(){ \$('#hint').hidden=true; }
+function setFeedback(msg, cls){ const f=$('#feedback'); f.textContent=msg; f.className='feedback '+(cls||''); }
+function showHint(html){ const h=$('#hint'); h.innerHTML=html; h.hidden=false; }
+function hideHint(){ $('#hint').hidden=true; }
 
 function press(k){
-  if(!S || S.done || \$('#playView').hidden) return;
+  if(!S || S.done || $('#playView').hidden) return;
   if(k==='enter') return submit();
   if(k==='back') S.input=S.input.slice(0,-1);
   else if(k==='clear') S.input='';
   else if(k==='^'){
-    if(!/[a-z)]\$/i.test(S.input)){ setFeedback('Type a letter first, then press xⁿ for its power.','note'); return; }
+    if(!/[a-z)]$/i.test(S.input)){ setFeedback('Type a letter first, then press xⁿ for its power.','note'); return; }
     S.input+='^';
   }
   else if(S.input.length<40) S.input+=k;
@@ -800,7 +809,7 @@ function revealIfStuck(){
 function lineWrong(raw){
   S.score-=10; S.wrong++; S.mistakes++; S.tries++;
   floatScore('−10',false); renderScore();
-  const scr=\$('#screen'); scr.classList.remove('shake'); void scr.offsetWidth; scr.classList.add('shake');
+  const scr=$('#screen'); scr.classList.remove('shake'); void scr.offsetWidth; scr.classList.add('shake');
   setFeedback(`Not quite. That line changes the value of the expression. −10`,'bad');
   showHint(`<b>Hint: ${stepName(S.step)}</b>${S.q.L[S.step][2]}${revealIfStuck()}`);
   S.input=''; renderSheet();
@@ -826,24 +835,24 @@ function finishQuestion(){
       <p>Answer one more question of the same type. Finish it with no mistakes to clear this type.</p>
       <button class="btn" id="nextBtn" type="button">Try one more</button></div>`;
   }
-  \$('#padArea').hidden=true; const ra=\$('#resultArea'); ra.innerHTML=html; ra.hidden=false;
+  $('#padArea').hidden=true; const ra=$('#resultArea'); ra.innerHTML=html; ra.hidden=false;
   renderProgress();
-  \$('#nextBtn').addEventListener('click',()=>{
+  $('#nextBtn').addEventListener('click',()=>{
     if(S.mistakes===0){ if(last) return showWin(); S.t++; loadQuestion(false); }
     else loadQuestion(true);
     window.scrollTo({top:0});
   });
-  \$('#nextBtn').focus();
+  $('#nextBtn').focus();
 }
 
 function showWin(){
   show('winView'); renderProgress();
-  \$('#stats').innerHTML = `
+  $('#stats').innerHTML = `
     <div class="stat"><b>${showNum(S.score)}</b><span>Final score</span></div>
     <div class="stat"><b>${S.right}</b><span>Correct lines</span></div>
     <div class="stat"><b>${S.wrong}</b><span>Wrong lines</span></div>
     <div class="stat"><b>${S.answered}</b><span>Questions answered</span></div>`;
-  const c=\$('#confetti'); c.innerHTML='';
+  const c=$('#confetti'); c.innerHTML='';
   const cols=['var(--gold)','var(--h1)','var(--h2)','var(--h3)','var(--ink)'];
   for(let i=0;i<70;i++){
     const e=document.createElement('i');
@@ -856,42 +865,42 @@ function showWin(){
 
 function renderBank(){
   const total=TYPES.reduce((a,t)=>a+t.qs.length,0), ws=TYPES.reduce((a,t)=>a+t.qs.filter(q=>q.r).length,0);
-  \$('#bankIntro').textContent = `${TYPES.length} question types, ${total} questions: ${ws} from the worksheet and ${total-ws} new ones. The full working is shown under each question.`;
-  \$('#bankList').innerHTML = TYPES.map((ty,ti)=>`
+  $('#bankIntro').textContent = `${TYPES.length} question types, ${total} questions: ${ws} from the worksheet and ${total-ws} new ones. The full working is shown under each question.`;
+  $('#bankList').innerHTML = TYPES.map((ty,ti)=>`
     <div class="btype"><h2>Type ${ti+1}: ${ty.name}</h2><p>${ty.tip}</p><ol>
-    ${ty.qs.map(q=>`<li><span class="bq">\${pretty(q.q)}</span><span class="tag ${q.r?'ws':''}">${q.r?'Worksheet '+q.r:'New'}</span>
-      <div class="bw">\${q.L.map(l=>'= '+pretty(l[0])).join('&emsp;')}</div></li>`).join('')}
+    ${ty.qs.map(q=>`<li><span class="bq">${pretty(q.q)}</span><span class="tag ${q.r?'ws':''}">${q.r?'Worksheet '+q.r:'New'}</span>
+      <div class="bw">${q.L.map(l=>'= '+pretty(l[0])).join('&emsp;')}</div></li>`).join('')}
     </ol></div>`).join('');
 }
 function openBank(){ renderBank(); show('bankView'); }
 
+/* ---------- Wiring ---------- */
 document.addEventListener('click',e=>{ const k=e.target.closest('.key'); if(k) press(k.dataset.k); });
 document.addEventListener('keydown',e=>{
-  if(\$('#playView').hidden || !S || S.done) return;
+  if($('#playView').hidden || !S || S.done) return;
   if(e.ctrlKey||e.metaKey||e.altKey) return;
-  if(e.target.closest && e.target.closest('button') && e.key==='Enter') { 
+  if(e.target.closest && e.target.closest('button') && e.key==='Enter') { /* let focused buttons work normally */
     if(!e.target.classList.contains('key')) return; }
   let k=null;
-  if(/^[0-9]\$/.test(e.key)) k=e.key;
+  if(/^[0-9]$/.test(e.key)) k=e.key;
   else if('+*/()^'.includes(e.key)) k=e.key;
   else if(e.key==='-'||e.key==='−') k='-';
   else if(e.key==='Backspace') k='back';
   else if(e.key==='Escape') k='clear';
   else if(e.key==='Enter') k='enter';
-  else if(/^[a-z]\$/i.test(e.key) && S.vars.includes(e.key.toLowerCase())) k=e.key.toLowerCase();
+  else if(/^[a-z]$/i.test(e.key) && S.vars.includes(e.key.toLowerCase())) k=e.key.toLowerCase();
   if(!k) return;
   e.preventDefault();
   const btn=document.querySelector(`.key[data-k="${CSS.escape(k)}"]`);
   if(btn){ btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),90); }
   press(k);
 });
-
-\$('#startBtn').addEventListener('click',startGame);
-\$('#againBtn').addEventListener('click',startGame);
-\$('#bankBtn').addEventListener('click',openBank);
-\$('#winBank').addEventListener('click',openBank);
-\$('#bankLink').addEventListener('click',openBank);
-\$('#bankBack').addEventListener('click',()=>{ show(lastView); renderProgress(); });
+$('#startBtn').addEventListener('click',startGame);
+$('#againBtn').addEventListener('click',startGame);
+$('#bankBtn').addEventListener('click',openBank);
+$('#winBank').addEventListener('click',openBank);
+$('#bankLink').addEventListener('click',openBank);
+$('#bankBack').addEventListener('click',()=>{ show(lastView); renderProgress(); });
 renderProgress(); renderScore();
 </script>
 </body>
