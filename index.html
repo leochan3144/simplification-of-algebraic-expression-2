@@ -219,7 +219,6 @@ svg.tick path{stroke:var(--green)}
   <header class="top">
     <p class="brand">Simplify <span>it!</span></p>
     <ol class="progress" id="progress" aria-label="Question types"></ol>
-    <!-- MODIFIED: Disabled and hidden Question bank link -->
     <button class="linkbtn" id="bankLink" type="button" disabled hidden>Question bank</button>
     <div class="score" aria-live="polite"><small>Score</small><b id="score">0</b></div>
   </header>
@@ -236,7 +235,6 @@ svg.tick path{stroke:var(--green)}
       <p class="lead">Eight question types from your worksheet. Write each line of working after the equals sign, just like in your homework, and earn the trophy.</p>
       <div class="cta">
         <button class="btn" id="startBtn" type="button">Start the game</button>
-        <!-- MODIFIED: Disabled and hidden Question bank button -->
         <button class="btn ghost" id="bankBtn" type="button" disabled hidden>See the question bank</button>
       </div>
     </div>
@@ -316,7 +314,6 @@ svg.tick path{stroke:var(--green)}
     <div class="stats" id="stats"></div>
     <div class="cta">
       <button class="btn" id="againBtn" type="button">Play again</button>
-      <!-- MODIFIED: Disabled and hidden Question bank button -->
       <button class="btn ghost" id="winBank" type="button" disabled hidden>See the question bank</button>
     </div>
   </section>
@@ -324,7 +321,6 @@ svg.tick path{stroke:var(--green)}
 <div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <script>
-/*ENGINE-START*/
 /* ---------- Algebra engine: polynomials as Map(key -> {c, m}) ---------- */
 const mkey = m => Object.keys(m).filter(v=>m[v]).sort().map(v=>v+m[v]).join('');
 const EPS = 1e-9;
@@ -456,10 +452,8 @@ function fmtPoly(p){
   });
   return s;
 }
-/* ---------- Question bank ----------
-   q: question (* = ×, / = ÷). r: worksheet reference (blank = new question).
-   L: lines of working, each written after "=":
-      [expression, step name, hint, flags]   flags: "g" = grouping step, "o" = may be done in your head */
+
+/* ---------- Question bank ---------- */
 const GL="Group like terms", CL="Collect like terms", SB="Simplify the bracket", SBS="Simplify the brackets",
       RB="Remove the bracket", MF="Multiply first", DF="Divide first", MD="× and ÷ first", MU="Multiply", DV="Divide",
       NL="Numbers together, letters together";
@@ -549,7 +543,6 @@ const TYPES = [
 /* ---------- Checking a line of working ---------- */
 const norm = s => String(s).replace(/×/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s+/g,'').toLowerCase().replace(/^\+/,'');
 
-/* split at top-level + and − into signed terms */
 function splitTerms(str){
   const s=norm(str), out=[]; let depth=0, cur='', sign=1, prev='';
   for(const ch of s){
@@ -566,7 +559,6 @@ function splitTerms(str){
 const termPoly = t => t.sign<0 ? P.neg(parse(t.body)) : parse(t.body);
 const isSimpleBody = b => b!=='' && !/[()*\/]/.test(b) && simplestFormIssue(b)===null;
 
-/* split a term's body into factors at top-level × and ÷ (and implied × beside brackets) */
 function factorsOf(body){
   const out=[]; let depth=0, cur='', div=false;
   const push=()=>{ if(cur) out.push({div,str:cur}); cur=''; div=false; };
@@ -614,7 +606,6 @@ function adjacent(terms){
   for(let i=0;i<keys.length;i++){ if(i>0 && keys[i]===keys[i-1]) continue; if(seen.has(keys[i])) return false; seen.add(keys[i]); }
   return true;
 }
-/* numbers written together and letters written together in one product */
 function productGrouped(t){
   const fs=factorsOf(t.body); if(fs.length<2) return false;
   const cls=[];
@@ -638,7 +629,6 @@ function lineMatch(input, expected, flags){
     return g ? adjacent(pt) : true;
   }catch(e){ return false; }
 }
-/*ENGINE-END*/
 
 /* ---------- Game ---------- */
 const $=s=>document.querySelector(s);
@@ -671,7 +661,6 @@ function floatScore(txt, up){
   \$('.score').appendChild(f); setTimeout(()=>f.remove(),1000);
 }
 
-/* ----- expression display with optional like-term highlighting ----- */
 function colorOf(key){
   if(!S.colors.has(key)) S.colors.set(key, S.colors.size % 6);
   return S.colors.get(key);
@@ -705,7 +694,6 @@ function loadQuestion(follow){
   S.qpoly=parse(S.q.q);
   S.vars=[...new Set(S.q.q.match(/[a-z]/g))].sort();
   Object.assign(S,{step:0,rows:[],tries:0,stuck:0,mistakes:0,input:'',follow,revealed:false,done:false,colors:new Map()});
-  /* fix colours in order of appearance so they stay the same on every line */
   [S.q.q, ...S.q.L.map(l=>l[0])].forEach(e=>splitTerms(e).forEach(t=>{ try{ colorOf(likeKey(t)); }catch(x){} }));
   $('#padArea').hidden=false; $('#resultArea').hidden=true;
   \$('#letters').innerHTML = S.vars.map(v=>`<button class="key var" data-k="${v}" type="button">${v}</button>`).join('');
@@ -877,12 +865,11 @@ function renderBank(){
 }
 function openBank(){ renderBank(); show('bankView'); }
 
-/* ---------- Wiring ---------- */
 document.addEventListener('click',e=>{ const k=e.target.closest('.key'); if(k) press(k.dataset.k); });
 document.addEventListener('keydown',e=>{
   if(\$('#playView').hidden || !S || S.done) return;
   if(e.ctrlKey||e.metaKey||e.altKey) return;
-  if(e.target.closest && e.target.closest('button') && e.key==='Enter') { /* let focused buttons work normally */
+  if(e.target.closest && e.target.closest('button') && e.key==='Enter') { 
     if(!e.target.classList.contains('key')) return; }
   let k=null;
   if(/^[0-9]\$/.test(e.key)) k=e.key;
@@ -898,6 +885,7 @@ document.addEventListener('keydown',e=>{
   if(btn){ btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),90); }
   press(k);
 });
+
 \$('#startBtn').addEventListener('click',startGame);
 \$('#againBtn').addEventListener('click',startGame);
 \$('#bankBtn').addEventListener('click',openBank);
